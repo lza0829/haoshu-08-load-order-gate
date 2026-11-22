@@ -53,6 +53,21 @@ def 跑贯验() -> dict:
             ):
                 双当前.append(f"{表}:{r['p']}")
 
+        序问题 = []
+        for r in conn.execute(
+            "SELECT 批次编号, 结果, 半截残留 FROM 装载序审计 WHERE 结果<>'成功' AND 半截残留>0"
+        ):
+            序问题.append(f"失败批留半截:{r['批次编号']}({r['半截残留']})")
+        # 每个落库批次必须至少有一条成功序审计，杜绝「静默重排未留证」。
+        for r in conn.execute("SELECT 编号 FROM 装载批次"):
+            批 = r["编号"]
+            审 = conn.execute(
+                "SELECT 1 FROM 装载序审计 WHERE 批次编号=? AND 结果='成功' LIMIT 1",
+                (批,),
+            ).fetchone()
+            if not 审:
+                序问题.append(f"批次缺成功序审计:{批}")
+
         检项 = [
             {
                 "名": "链接两端可解",
@@ -69,8 +84,13 @@ def 跑贯验() -> dict:
                 "通过": len(双当前) == 0,
                 "说明": "同父键仅一条当前卫星" if not 双当前 else "；".join(双当前[:6]),
             },
+            {
+                "名": "序审计完整",
+                "通过": len(序问题) == 0,
+                "说明": "成功批均有序审计且无半截残留" if not 序问题 else "；".join(序问题[:6]),
+            },
         ]
-        问题 = 缺链 + [f"孤儿卫星:{x}" for x in 孤儿] + [f"双当前:{x}" for x in 双当前]
+        问题 = 缺链 + [f"孤儿卫星:{x}" for x in 孤儿] + [f"双当前:{x}" for x in 双当前] + 序问题
         通过 = 0 if 问题 else 1
         说明 = "；".join(问题) if 问题 else "枢纽、链接、卫星引用与当前版贯穿互证通过"
         conn.execute(

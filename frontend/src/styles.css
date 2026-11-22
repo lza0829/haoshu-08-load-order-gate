@@ -105,6 +105,7 @@ th { color: var(--淡); font-weight: 500 }
 .装载顶 { display: flex; flex-wrap: wrap; gap: 0.7rem 1.2rem; align-items: baseline; margin-bottom: 0.75rem }
 .装载顶 .批 { font-weight: 700; letter-spacing: 0.04em }
 .装载顶 .日 { color: var(--淡); font-size: 0.86rem }
+.装载序 { display: flex; flex-wrap: wrap; gap: 0.5rem 0.9rem; align-items: center; font-size: 0.86rem }
 .明细 { margin: 0; padding-left: 1.1rem; color: var(--淡); font-size: 0.86rem; line-height: 1.65 }
 .明细 li b { color: var(--字); font-weight: 600 }
 

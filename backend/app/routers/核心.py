@@ -1,19 +1,10 @@
 import json
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, HTTPException, Request
 
 from app.db import 夹具目录, 连接
 from app.services import 装载, 贯验, 目录
 
 路由 = APIRouter(prefix="/api")
-
-
-class 装载请求(BaseModel):
-    装载日: str = ""
-    批次编号: str = ""
-    枢纽: dict = Field(default_factory=dict)
-    链接: dict = Field(default_factory=dict)
-    卫星: dict = Field(default_factory=dict)
 
 
 @路由.get("/健康")
@@ -99,8 +90,12 @@ def 隔离():
 
 
 @路由.post("/装载")
-def 做装载(体: 装载请求):
-    return 装载.装一批(体.model_dump())
+async def 做装载(请求: Request):
+    # 直接取原始 JSON，保留载荷中的段键物理顺序，供「原序」审计。
+    体 = await 请求.json()
+    if not isinstance(体, dict):
+        raise HTTPException(400, "装载载荷必须是 JSON 对象")
+    return 装载.装一批(体)
 
 
 @路由.post("/装载/夹具")
@@ -108,7 +103,17 @@ def 装夹具(名: str = "号卡套餐样例"):
     路径 = 夹具目录 / f"{名}.json"
     if not 路径.exists():
         raise HTTPException(404, f"夹具不存在:{名}")
+    # Python 3.7+ 的 dict 保序，文件段序即「原序」。
     return 装载.装一批(json.loads(路径.read_text(encoding="utf-8")))
+
+
+@路由.get("/装载序贯验")
+def 装载序贯验(批次编号: str = "", 限: int = 50):
+    """只读：批号、原序、执行序或拒绝原因、半截残留计数。"""
+    return {
+        "批次编号": 批次编号,
+        "记录": 装载.列序审计(批次编号=批次编号, 限=限),
+    }
 
 
 @路由.post("/贯验")
